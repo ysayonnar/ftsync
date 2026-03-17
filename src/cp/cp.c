@@ -4,6 +4,7 @@
 #include <netinet/in.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/socket.h>
 #include <unistd.h>
 
@@ -146,7 +147,22 @@ int main() {
 		return -1;
 	}
 
-	send_ls(sock);
+	char cmd[64];
+	while (1) {
+		printf("\ncommand [ping/ls/quit] => ");
+		if (fgets(cmd, sizeof(cmd), stdin) == NULL)
+			break;
+
+		if (strncmp(cmd, "ping", 4) == 0) {
+			send_ping(sock);
+		} else if (strncmp(cmd, "ls", 2) == 0) {
+			send_ls(sock);
+		} else if (strncmp(cmd, "quit", 4) == 0) {
+			break;
+		} else {
+			printf("unknown command\n");
+		}
+	}
 
 	close(sock);
 	return 0;

@@ -80,30 +80,28 @@ int handle(int server_sock) {
 
 		message_header_t header;
 
-		if (recv_exact(client_sock, &header, sizeof(header)) <= 0) {
-			printf("failed to read header or client disconnected.\n");
-			continue;
+		while (recv_exact(client_sock, &header, sizeof(header)) > 0) {
+			if (!validate_magic(header.magic)) {
+				printf("invalid magic bytes. Disconnecting.\n");
+				break;
+			}
+
+			switch (header.command_id) {
+			case CMD_PING:
+				printf("[PING] received - client socket: %d\n", client_sock);
+				command_ping(client_sock);
+				break;
+			case CMD_LS:
+				printf("[LS] received - client socket: %d\n", client_sock);
+				command_ls(client_sock);
+				break;
+			default:
+				printf("[UNKNOWN] command received: %d - client_sock: %d\n", header.command_id, client_sock);
+				break;
+			}
 		}
 
-		if (!validate_magic(header.magic)) {
-			printf("invalid magic bytes. Disconnecting.\n");
-			continue;
-		}
-
-		switch (header.command_id) {
-		case CMD_PING:
-			printf("[PING] received - client socket: %d\n", client_sock);
-			command_ping(client_sock);
-			break;
-		case CMD_LS:
-			printf("[LS] received - client socket: %d\n", client_sock);
-			command_ls(client_sock);
-			break;
-		default:
-			printf("[UNKNOWN] command received: %d - client_sock: %d\n", header.command_id, client_sock);
-			break;
-		}
-
+		printf("client disconnected - client socket: %d\n", client_sock);
 		close(client_sock);
 	}
 
