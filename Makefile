@@ -11,3 +11,6 @@ build:
 
 clean:
 	rm -rf build/*
+
+run-daemon:
+	docker build -f src/daemon/Dockerfile -t daemon . && docker run -p 8080:8080 daemon
