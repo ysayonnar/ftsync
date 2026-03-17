@@ -6,10 +6,16 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
-#define DAEMON_PORT 8080
-#define DAEMON_IP "127.0.0.1"
-
 int main() {
+	char daemon_host[256];
+	int daemon_port;
+
+	printf("Enter host => ");
+	scanf("%255s", daemon_host);
+
+	printf("Enter port => ");
+	scanf("%d", &daemon_port);
+
 	int sock = socket(AF_INET, SOCK_STREAM, 0);
 	if (sock == -1) {
 		perror("socket creation error");
@@ -18,14 +24,14 @@ int main() {
 
 	struct sockaddr_in server_addr = {0};
 	server_addr.sin_family = AF_INET;
-	server_addr.sin_port = htons(DAEMON_PORT);
+	server_addr.sin_port = htons(daemon_port);
 
-	if (inet_pton(AF_INET, DAEMON_IP, &server_addr.sin_addr) <= 0) {
+	if (inet_pton(AF_INET, daemon_host, &server_addr.sin_addr) <= 0) {
 		perror("invalid address or address not supported");
 		return -1;
 	}
 
-	printf("connecting to daemon %s:%d...\n", DAEMON_IP, DAEMON_PORT);
+	printf("connecting to daemon %s:%d...\n", daemon_host, daemon_port);
 	if (connect(sock, (struct sockaddr *)&server_addr, sizeof(server_addr)) == -1) {
 		perror("connection failed");
 		return -1;
