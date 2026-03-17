@@ -1,7 +1,7 @@
 .PHONY: build clean
 
 CC:=gcc
-COMMON=./src/common/common.c
+COMMON=./src/common/common.c ./src/common/protocol.c
 DAEMON_SRC=./src/daemon/daemon.c
 CP_SRC=./src/cp/cp.c
 
