@@ -36,6 +36,40 @@ int command_ping(int client_sock) {
 	return 0;
 }
 
+int command_ls(int client_sock) {
+	FILE *fp = popen("ls -la", "r");
+	if (fp == NULL) {
+		perror("popen error");
+		return -1;
+	}
+
+	char output_buffer[8192] = {0};
+
+	size_t total_read = fread(output_buffer, 1, sizeof(output_buffer), fp);
+	pclose(fp);
+
+	message_header_t resp;
+	resp.magic[0] = MAGIC_1;
+	resp.magic[1] = MAGIC_2;
+	resp.command_id = CMD_LS;
+
+	resp.payload_size = htonl(total_read);
+
+	if (send_exact(client_sock, &resp, sizeof(resp)) <= 0) {
+		perror("sending error");
+		return -1;
+	}
+
+	if (total_read > 0) {
+		if (send_exact(client_sock, output_buffer, total_read) <= 0) {
+			perror("sending error");
+			return -1;
+		}
+	}
+
+	return 0;
+}
+
 int handle(int server_sock) {
 	while (1) {
 		int client_sock = accept(server_sock, NULL, NULL);
@@ -58,11 +92,15 @@ int handle(int server_sock) {
 
 		switch (header.command_id) {
 		case CMD_PING:
+			printf("[PING] received - client socket: %d\n", client_sock);
 			command_ping(client_sock);
 			break;
-
+		case CMD_LS:
+			printf("[LS] received - client socket: %d\n", client_sock);
+			command_ls(client_sock);
+			break;
 		default:
-			printf("unknown command ID: %d\n", header.command_id);
+			printf("[UNKNOWN] command received: %d - client_sock: %d\n", header.command_id, client_sock);
 			break;
 		}
 

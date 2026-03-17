@@ -3,18 +3,15 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <sys/socket.h>
 #include <unistd.h>
 
-int main() {
-	char daemon_host[256];
-	int daemon_port;
+#define DEFAULT_HOST "127.0.0.1"
+#define DEFAULT_PORT 8080
 
-	printf("Enter host => ");
-	scanf("%255s", daemon_host);
-
-	printf("Enter port => ");
-	scanf("%d", &daemon_port);
+int connect_to_daemon(const char *daemon_host, int daemon_port) {
+	printf("connecting to -> %s:%d\n", daemon_host, daemon_port);
 
 	int sock = socket(AF_INET, SOCK_STREAM, 0);
 	if (sock == -1) {
@@ -38,6 +35,10 @@ int main() {
 	}
 	printf("connected to daemon!\n");
 
+	return sock;
+}
+
+int send_ping(int sock) {
 	message_header_t req;
 	req.magic[0] = MAGIC_1;
 	req.magic[1] = MAGIC_2;
@@ -52,19 +53,100 @@ int main() {
 	}
 
 	message_header_t resp;
-	if (recv_exact(sock, &resp, sizeof(resp)) > 0) {
-		if (resp.magic[0] == MAGIC_1 && resp.magic[1] == MAGIC_2) {
-			if (resp.command_id == CMD_PONG) {
-				printf("received PONG\n");
-			} else {
-				printf("unknown command received: %d\n", resp.command_id);
-			}
-		} else {
-			printf("invalid magic\n");
-		}
-	} else {
-		printf("unable to get response\n");
+	if (recv_exact(sock, &resp, sizeof(resp)) <= 0) {
+		perror("receiving error");
+		return -1;
 	}
+
+	if (!validate_magic(resp.magic)) {
+		perror("invalid magic");
+		return -1;
+	}
+
+	if (resp.command_id == CMD_PONG) {
+		printf("received PONG\n");
+	} else {
+		printf("unknown command received: %d\n", resp.command_id);
+	}
+
+	return 0;
+}
+
+int send_ls(int sock) {
+	message_header_t req;
+	req.magic[0] = MAGIC_1;
+	req.magic[1] = MAGIC_2;
+	req.command_id = CMD_LS;
+	req.payload_size = 0;
+
+	if (send_exact(sock, &req, sizeof(req)) <= 0) {
+		perror("error sending ls");
+		return -1;
+	}
+
+	message_header_t resp;
+
+	if (recv_exact(sock, &resp, sizeof(resp)) <= 0) {
+		printf("daemon connection refused");
+		return -1;
+	}
+
+	if (!validate_magic(resp.magic)) {
+		printf("invalid magic");
+		return -1;
+	}
+
+	uint32_t payload_size = ntohl(resp.payload_size);
+	if (payload_size == 0) {
+		printf("empty daemon response");
+		return -1;
+	}
+
+	char *buffer = malloc(payload_size + 1);
+	if (buffer == NULL) {
+		perror("malloc error");
+		return -1;
+	}
+
+	if (recv_exact(sock, buffer, payload_size) <= 0) {
+		printf("error reading data from daemon");
+		free(buffer);
+		return -1;
+	}
+
+	buffer[payload_size] = '\0';
+	printf("\n--- Daemon LS ---\n%s", buffer);
+	printf("---------------------------\n");
+
+	free(buffer);
+
+	return 0;
+}
+
+int main() {
+	char daemon_host[256] = DEFAULT_HOST;
+	int daemon_port = DEFAULT_PORT;
+	char buffer[256];
+
+	printf("enter daemon address [host:port] => ");
+
+	if (fgets(buffer, sizeof(buffer), stdin) != NULL) {
+		if (buffer[0] != '\n') {
+			int parsed = sscanf(buffer, "%255[^:]:%d", daemon_host, &daemon_port);
+
+			if (parsed < 2) {
+				printf("invalid format, using default/partial values\n");
+			}
+		}
+	}
+
+	int sock = connect_to_daemon(daemon_host, daemon_port);
+	if (sock == -1) {
+		perror("connecting to daemon error");
+		return -1;
+	}
+
+	send_ls(sock);
 
 	close(sock);
 	return 0;
