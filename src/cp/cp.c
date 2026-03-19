@@ -150,8 +150,9 @@ int main() {
 	char cmd[64];
 	while (1) {
 		printf("\ncommand [ping/ls/quit] => ");
-		if (fgets(cmd, sizeof(cmd), stdin) == NULL)
+		if (fgets(cmd, sizeof(cmd), stdin) == NULL) {
 			break;
+		}
 
 		if (strncmp(cmd, "ping", 4) == 0) {
 			send_ping(sock);

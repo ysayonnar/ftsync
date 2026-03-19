@@ -6,6 +6,7 @@ DAEMON_SRC=./src/daemon/daemon.c
 CP_SRC=./src/cp/cp.c
 
 build:
+	mkdir -p ./build
 	$(CC) $(DAEMON_SRC) $(COMMON) -o ./build/daemon
 	$(CC) $(CP_SRC) $(COMMON) -o ./build/cp
 
