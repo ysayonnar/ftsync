@@ -124,6 +124,61 @@ int send_ls(int sock) {
 	return 0;
 }
 
+int send_cd(int sock, const char *path) {
+	uint32_t path_len = strlen(path);
+
+	message_header_t req;
+	req.magic[0] = MAGIC_1;
+	req.magic[1] = MAGIC_2;
+	req.command_id = CMD_CD;
+	req.payload_size = htonl(path_len);
+
+	if (send_exact(sock, &req, sizeof(req)) <= 0) {
+		perror("error sending cd");
+		return -1;
+	}
+
+	if (send_exact(sock, path, path_len) <= 0) {
+		perror("error sending cd path");
+		return -1;
+	}
+
+	message_header_t resp;
+	if (recv_exact(sock, &resp, sizeof(resp)) <= 0) {
+		printf("daemon connection refused");
+		return -1;
+	}
+
+	if (!validate_magic(resp.magic)) {
+		printf("invalid magic");
+		return -1;
+	}
+
+	uint32_t payload_size = ntohl(resp.payload_size);
+	if (payload_size == 0) {
+		printf("cd: no such directory: %s\n", path);
+		return -1;
+	}
+
+	char *new_cwd = malloc(payload_size + 1);
+	if (new_cwd == NULL) {
+		perror("malloc error");
+		return -1;
+	}
+
+	if (recv_exact(sock, new_cwd, payload_size) <= 0) {
+		printf("error reading response from daemon");
+		free(new_cwd);
+		return -1;
+	}
+
+	new_cwd[payload_size] = '\0';
+	printf("cwd: %s\n", new_cwd);
+	free(new_cwd);
+
+	return 0;
+}
+
 int main() {
 	char daemon_host[256] = DEFAULT_HOST;
 	int daemon_port = DEFAULT_PORT;
@@ -147,9 +202,9 @@ int main() {
 		return -1;
 	}
 
-	char cmd[64];
+	char cmd[256];
 	while (1) {
-		printf("\ncommand [ping/ls/quit] => ");
+		printf("\ncommand [ping/ls/cd <path>/quit] => ");
 		if (fgets(cmd, sizeof(cmd), stdin) == NULL) {
 			break;
 		}
@@ -158,6 +213,10 @@ int main() {
 			send_ping(sock);
 		} else if (strncmp(cmd, "ls", 2) == 0) {
 			send_ls(sock);
+		} else if (strncmp(cmd, "cd", 2) == 0) {
+			char path[256] = "/";
+			sscanf(cmd, "cd %255s", path);
+			send_cd(sock, path);
 		} else if (strncmp(cmd, "quit", 4) == 0) {
 			break;
 		} else {

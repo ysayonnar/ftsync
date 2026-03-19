@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 #define DEFAULT_PORT 8080
@@ -42,6 +43,43 @@ int command_ping(int client_sock) {
 	response.payload_size = 0;
 
 	send_exact(client_sock, &response, sizeof(response));
+
+	return 0;
+}
+
+int command_cd(client *c, const char *path) {
+	char new_path[PATH_MAX];
+
+	if (path[0] == '/') {
+		strncpy(new_path, path, PATH_MAX - 1);
+		new_path[PATH_MAX - 1] = '\0';
+	} else {
+		if (snprintf(new_path, PATH_MAX, "%s/%s", c->cwd, path) >= PATH_MAX) {
+			message_header_t resp = {{MAGIC_1, MAGIC_2}, CMD_CD, 0};
+			send_exact(c->socket, &resp, sizeof(resp));
+			return -1;
+		}
+	}
+
+	message_header_t resp;
+	resp.magic[0] = MAGIC_1;
+	resp.magic[1] = MAGIC_2;
+	resp.command_id = CMD_CD;
+
+	struct stat st;
+	if (stat(new_path, &st) != 0 || !S_ISDIR(st.st_mode)) {
+		resp.payload_size = 0;
+		send_exact(c->socket, &resp, sizeof(resp));
+		return -1;
+	}
+
+	strncpy(c->cwd, new_path, PATH_MAX - 1);
+	c->cwd[PATH_MAX - 1] = '\0';
+
+	uint32_t len = strlen(c->cwd);
+	resp.payload_size = htonl(len);
+	send_exact(c->socket, &resp, sizeof(resp));
+	send_exact(c->socket, c->cwd, len);
 
 	return 0;
 }
@@ -146,6 +184,21 @@ int handle(int server_sock) {
 				printf("[LS] received from socket:%d\n", client_sock);
 				command_ls(client_sock, c->cwd);
 				break;
+			case CMD_CD: {
+				uint32_t path_len = ntohl(header.payload_size);
+				if (path_len == 0 || path_len >= PATH_MAX) {
+					printf("[CD] invalid payload size from socket:%d\n", client_sock);
+					break;
+				}
+				char path[PATH_MAX];
+				if (recv_exact(client_sock, path, path_len) <= 0) {
+					break;
+				}
+				path[path_len] = '\0';
+				printf("[CD] '%s' from socket:%d\n", path, client_sock);
+				command_cd(c, path);
+				break;
+			}
 			default:
 				printf("[UNKNOWN] command '%d' received form socket:%d\n", header.command_id, client_sock);
 				break;

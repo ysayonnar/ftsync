@@ -10,6 +10,7 @@
 #define CMD_PING 0x01
 #define CMD_PONG 0x02
 #define CMD_LS 0x03
+#define CMD_CD 0x04
 
 #pragma pack(push, 1)
 typedef struct {
