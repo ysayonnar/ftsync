@@ -26,12 +26,14 @@ int connect_to_daemon(const char *daemon_host, int daemon_port) {
 
 	if (inet_pton(AF_INET, daemon_host, &server_addr.sin_addr) <= 0) {
 		perror("invalid address or address not supported");
+		close(sock);
 		return -1;
 	}
 
 	printf("connecting to daemon %s:%d...\n", daemon_host, daemon_port);
 	if (connect(sock, (struct sockaddr *)&server_addr, sizeof(server_addr)) == -1) {
 		perror("connection failed");
+		close(sock);
 		return -1;
 	}
 	printf("connected to daemon!\n");
@@ -49,7 +51,6 @@ int send_ping(int sock) {
 	printf("sending PING...\n");
 	if (send_exact(sock, &req, sizeof(req)) <= 0) {
 		perror("failed to send data");
-		close(sock);
 		return -1;
 	}
 

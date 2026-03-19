@@ -29,6 +29,7 @@ int init_socket() {
 
 	if (bind(server_sock, (struct sockaddr *)&server_addr, sizeof(server_addr)) == -1) {
 		perror("binding socket error");
+		close(server_sock);
 		return -1;
 	}
 
@@ -121,7 +122,6 @@ int command_ls(int client_sock, char *path) {
 	return 0;
 }
 
-// NOTE: memory leaks here are not resolved
 int handle(int server_sock) {
 	client **clients = NULL;
 	int clients_amount = 0;
@@ -148,18 +148,27 @@ int handle(int server_sock) {
 			printf("New client 'socket:%d' connected\n", client_sock);
 
 			c = malloc(sizeof(client));
-
-			if (clients_amount == 0) {
-				clients = malloc(sizeof(client *));
-			} else {
-				clients = realloc(clients, sizeof(client *) * (clients_amount + 1));
-			}
-
-			if (clients == NULL) {
+			if (c == NULL) {
 				perror("allocation error");
-				return -1;
+				close(client_sock);
+				continue;
 			}
 
+			client **new_clients;
+			if (clients_amount == 0) {
+				new_clients = malloc(sizeof(client *));
+			} else {
+				new_clients = realloc(clients, sizeof(client *) * (clients_amount + 1));
+			}
+
+			if (new_clients == NULL) {
+				perror("allocation error");
+				free(c);
+				close(client_sock);
+				continue;
+			}
+
+			clients = new_clients;
 			clients_amount++;
 			strncpy(c->cwd, "/", PATH_MAX);
 			c->socket = client_sock;
@@ -207,6 +216,23 @@ int handle(int server_sock) {
 
 		printf("disconnected client socket:%d\n", client_sock);
 		close(client_sock);
+
+		for (int i = 0; i < clients_amount; i++) {
+			if (*(clients + i) == c) {
+				free(c);
+				for (int j = i; j < clients_amount - 1; j++) {
+					*(clients + j) = *(clients + j + 1);
+				}
+				clients_amount--;
+				if (clients_amount == 0) {
+					free(clients);
+					clients = NULL;
+				} else {
+					clients = realloc(clients, sizeof(client *) * clients_amount);
+				}
+				break;
+			}
+		}
 	}
 
 	return 0;
@@ -221,6 +247,7 @@ int main() {
 
 	if (listen(server_sock, 5) == -1) {
 		perror("listening socker error");
+		close(server_sock);
 		return -1;
 	}
 
