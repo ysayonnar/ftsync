@@ -12,7 +12,6 @@
 #include <unistd.h>
 
 #define DEFAULT_PORT 8080
-#define PATH_MAX 4096
 
 typedef struct {
 	int socket;
@@ -48,8 +47,10 @@ int command_ping(int client_sock) {
 	return 0;
 }
 
+// TODO: handle case when we get 'cd ..'
 int command_cd(client *c, const char *path) {
 	char new_path[PATH_MAX];
+	char resolved_path[PATH_MAX];
 
 	if (path[0] == '/') {
 		strncpy(new_path, path, PATH_MAX - 1);
@@ -67,14 +68,20 @@ int command_cd(client *c, const char *path) {
 	resp.magic[1] = MAGIC_2;
 	resp.command_id = CMD_CD;
 
-	struct stat st;
-	if (stat(new_path, &st) != 0 || !S_ISDIR(st.st_mode)) {
+	if (realpath(new_path, resolved_path) == NULL) {
 		resp.payload_size = 0;
 		send_exact(c->socket, &resp, sizeof(resp));
 		return -1;
 	}
 
-	strncpy(c->cwd, new_path, PATH_MAX - 1);
+	struct stat st;
+	if (stat(resolved_path, &st) != 0 || !S_ISDIR(st.st_mode)) {
+		resp.payload_size = 0;
+		send_exact(c->socket, &resp, sizeof(resp));
+		return -1;
+	}
+
+	strncpy(c->cwd, resolved_path, PATH_MAX - 1);
 	c->cwd[PATH_MAX - 1] = '\0';
 
 	uint32_t len = strlen(c->cwd);
@@ -87,7 +94,7 @@ int command_cd(client *c, const char *path) {
 
 int command_ls(int client_sock, char *path) {
 	char command[1024];
-	snprintf(command, sizeof(command), "ls -la \"%s\"", path);
+	snprintf(command, sizeof(command), "ls \"%s\"", path);
 
 	FILE *fp = popen(command, "r");
 	if (fp == NULL) {
@@ -170,7 +177,7 @@ int handle(int server_sock) {
 
 			clients = new_clients;
 			clients_amount++;
-			strncpy(c->cwd, "/", PATH_MAX);
+			strncpy(c->cwd, getenv("HOME"), PATH_MAX);
 			c->socket = client_sock;
 
 			*(clients + clients_amount - 1) = c;
