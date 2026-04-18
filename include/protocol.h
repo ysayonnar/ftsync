@@ -11,8 +11,11 @@
 #define CMD_PONG 0x02
 #define CMD_LS 0x03
 #define CMD_CD 0x04
-#define CMD_LS_DETAIL 0x05
-#define CMD_READ_FILE 0x06
+#define CMD_LS_DETAIL  0x05
+#define CMD_READ_FILE  0x06
+#define CMD_FILE_INFO  0x07
+#define CMD_DOWNLOAD   0x08
+#define CMD_UPLOAD     0x09
 
 #define CMD_AUTH_PUBKEY    0x10
 #define CMD_AUTH_CHALLENGE 0x11

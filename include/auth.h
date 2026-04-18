@@ -3,7 +3,7 @@
 
 #include <openssl/evp.h>
 
-EVP_PKEY *auth_generate_rsa_key();
+EVP_PKEY *auth_generate_rsa_key(void);
 
 char *auth_get_pubkey_pem(EVP_PKEY *pkey, int *out_len);
 EVP_PKEY *auth_load_pubkey_pem(const char *pem, int len);

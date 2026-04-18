@@ -11,7 +11,7 @@
 #include <string.h>
 #include <uuid/uuid.h>
 
-EVP_PKEY *auth_generate_rsa_key() {
+EVP_PKEY *auth_generate_rsa_key(void) {
 	EVP_PKEY_CTX *ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_RSA, NULL);
 	if (!ctx)
 		return NULL;
