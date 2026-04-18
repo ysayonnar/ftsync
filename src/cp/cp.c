@@ -1,3 +1,4 @@
+#include "../../include/auth.h"
 #include "../../include/common.h"
 #include "../../include/protocol.h"
 #include <arpa/inet.h>
@@ -200,6 +201,12 @@ int main() {
 	int sock = connect_to_daemon(daemon_host, daemon_port);
 	if (sock == -1) {
 		perror("connecting to daemon error");
+		return -1;
+	}
+
+	if (auth_client_handshake(sock) < 0) {
+		fprintf(stderr, "authentication failed, closing connection\n");
+		close(sock);
 		return -1;
 	}
 

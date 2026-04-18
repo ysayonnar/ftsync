@@ -1,3 +1,4 @@
+#include "../../include/auth.h"
 #include "../../include/common.h"
 #include "../../include/protocol.h"
 #include <arpa/inet.h>
@@ -47,7 +48,6 @@ int command_ping(int client_sock) {
 	return 0;
 }
 
-// TODO: handle case when we get 'cd ..'
 int command_cd(client *c, const char *path) {
 	char new_path[PATH_MAX];
 	char resolved_path[PATH_MAX];
@@ -153,6 +153,12 @@ int handle(int server_sock) {
 
 		if (c == NULL) {
 			printf("New client 'socket:%d' connected\n", client_sock);
+
+			if (auth_server_handshake(client_sock) < 0) {
+				printf("auth failed for socket:%d, disconnecting\n", client_sock);
+				close(client_sock);
+				continue;
+			}
 
 			c = malloc(sizeof(client));
 			if (c == NULL) {

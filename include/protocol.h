@@ -12,6 +12,12 @@
 #define CMD_LS 0x03
 #define CMD_CD 0x04
 
+#define CMD_AUTH_PUBKEY    0x10
+#define CMD_AUTH_CHALLENGE 0x11
+#define CMD_AUTH_RESPONSE  0x12
+#define CMD_AUTH_OK        0x13
+#define CMD_AUTH_FAIL      0x14
+
 #pragma pack(push, 1)
 typedef struct {
 	uint8_t magic[2];
