@@ -18,7 +18,7 @@ endif
 build:
 	mkdir -p ./build
 	$(CC) $(CFLAGS) $(DAEMON_SRC) $(COMMON) -o ./build/daemon $(LDFLAGS)
-	$(CC) $(CFLAGS) $(CP_SRC) $(COMMON) -o ./build/cp $(LDFLAGS)
+	$(CC) $(CFLAGS) $(CP_SRC) $(COMMON) -o ./build/cp $(LDFLAGS) -lncurses
 
 clean:
 	rm -rf build/*
