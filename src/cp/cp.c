@@ -1,3 +1,4 @@
+#define _DEFAULT_SOURCE
 #include "../../include/auth.h"
 #include "../../include/common.h"
 #include "../../include/protocol.h"
@@ -384,7 +385,7 @@ static void draw_browser(browser_t *br) {
 	attron(COLOR_PAIR(3));
 	char footer[512];
 	if (br->status[0]) {
-		snprintf(footer, sizeof(footer), " %s", br->status);
+		snprintf(footer, sizeof(footer), " %.*s", (int)(sizeof(footer) - 2), br->status);
 	} else {
 		snprintf(footer, sizeof(footer),
 				 " Enter:open  Bksp:parent  c:copy  q:quit  [%d/%d]",
@@ -512,7 +513,7 @@ static void navigate_up(int sock, browser_t *br) {
 	br->scroll = 0;
 
 	if (came_from[0]) {
-		int rows, cols;
+		int rows, cols __attribute__((unused));
 		getmaxyx(stdscr, rows, cols);
 		int visible = rows - 2;
 		if (visible < 1)
@@ -644,7 +645,7 @@ static void handle_copy(int sock, browser_t *br) {
 		return;
 
 	char dest_display[512];
-	snprintf(dest_display, sizeof(dest_display), "%s:%d:%s", dest_host, dest_port, dest_path);
+	snprintf(dest_display, sizeof(dest_display), "%.255s:%d:%.*s", dest_host, dest_port, 248, dest_path);
 
 	show_step(e->name, dest_display, 1, 5, "Getting source file info...");
 	uint8_t src_sha256[32];
@@ -736,7 +737,7 @@ static void handle_copy(int sock, browser_t *br) {
 		char result[256];
 		char sz[32];
 		format_size(src_size, sz, sizeof(sz));
-		snprintf(result, sizeof(result), "SUCCESS: %s transferred (%s). SHA256 verified.", e->name, sz);
+		snprintf(result, sizeof(result), "SUCCESS: %.*s transferred (%s). SHA256 verified.", 180, e->name, sz);
 		show_result(e->name, dest_display, result);
 	}
 	getch();
@@ -772,7 +773,7 @@ static void run_browser(int sock) {
 		int ch = getch();
 		br.status[0] = '\0';
 
-		int rows, cols;
+		int rows, cols __attribute__((unused));
 		getmaxyx(stdscr, rows, cols);
 		int visible = rows - 2;
 		if (visible < 1)
@@ -826,7 +827,7 @@ static void run_browser(int sock) {
 					uint32_t csz = 0;
 					if (send_read_file(sock, e->name, &content, &csz) == 0) {
 						char title[MAX_PATH + MAX_NAME];
-						snprintf(title, sizeof(title), " %s/%s", br.cwd, e->name);
+						snprintf(title, sizeof(title), " %.*s/%.*s", MAX_PATH - 2, br.cwd, MAX_NAME - 2, e->name);
 						view_content(title, content, csz);
 						free(content);
 					} else {

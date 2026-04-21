@@ -1,4 +1,6 @@
 #define _FILE_OFFSET_BITS 64
+#define _DEFAULT_SOURCE
+#define _XOPEN_SOURCE 600
 #include "../../include/auth.h"
 #include "../../include/common.h"
 #include "../../include/protocol.h"
@@ -86,7 +88,7 @@ static void resolve_path(client *c, const char *name, char *out) {
 		strncpy(out, name, PATH_MAX - 1);
 		out[PATH_MAX - 1] = '\0';
 	} else {
-		snprintf(out, PATH_MAX, "%s/%s", c->cwd, name);
+		snprintf(out, PATH_MAX, "%.*s/%.*s", PATH_MAX / 2 - 1, c->cwd, PATH_MAX / 2 - 1, name);
 	}
 }
 
