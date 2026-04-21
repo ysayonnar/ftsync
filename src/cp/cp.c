@@ -341,7 +341,7 @@ static void format_size(uint64_t size, char *buf, int len) {
 static void draw_browser(browser_t *br) {
 	int rows, cols;
 	getmaxyx(stdscr, rows, cols);
-	erase();
+	clear();
 
 	attron(COLOR_PAIR(3) | A_BOLD);
 	mvprintw(0, 0, "%-*.*s", cols, cols, br->cwd);

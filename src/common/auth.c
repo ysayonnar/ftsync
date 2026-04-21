@@ -200,7 +200,6 @@ int auth_server_handshake(int client_sock) {
 }
 
 int auth_client_handshake(int sock) {
-	printf("[AUTH] generating RSA-2048 key pair...\n");
 	EVP_PKEY *pkey = auth_generate_rsa_key();
 	if (!pkey) {
 		fprintf(stderr, "[AUTH] failed to generate RSA key\n");
@@ -229,7 +228,6 @@ int auth_client_handshake(int sock) {
 		return -1;
 	}
 	free(pem);
-	printf("[AUTH] public key sent to daemon\n");
 
 	message_header_t challenge_hdr;
 	if (recv_exact(sock, &challenge_hdr, sizeof(challenge_hdr)) <= 0 ||
@@ -296,6 +294,5 @@ int auth_client_handshake(int sock) {
 		return -1;
 	}
 
-	printf("[AUTH] authentication successful\n");
 	return 0;
 }
