@@ -65,17 +65,23 @@ static int send_cd_get_path(int sock, const char *path, char *out, int out_size)
 	req.command_id = CMD_CD;
 	req.payload_size = htonl(plen);
 
-	if (send_exact(sock, &req, sizeof(req)) <= 0) return -1;
-	if (send_exact(sock, path, plen) <= 0) return -1;
+	if (send_exact(sock, &req, sizeof(req)) <= 0)
+		return -1;
+	if (send_exact(sock, path, plen) <= 0)
+		return -1;
 
 	message_header_t resp;
-	if (recv_exact(sock, &resp, sizeof(resp)) <= 0) return -1;
-	if (!validate_magic(resp.magic)) return -1;
+	if (recv_exact(sock, &resp, sizeof(resp)) <= 0)
+		return -1;
+	if (!validate_magic(resp.magic))
+		return -1;
 
 	uint32_t size = ntohl(resp.payload_size);
-	if (size == 0 || (int)size >= out_size) return -1;
+	if (size == 0 || (int)size >= out_size)
+		return -1;
 
-	if (recv_exact(sock, out, size) <= 0) return -1;
+	if (recv_exact(sock, out, size) <= 0)
+		return -1;
 	out[size] = '\0';
 	return 0;
 }
@@ -85,38 +91,51 @@ static int send_ls_detail(int sock, browser_t *br) {
 
 	free(br->entries);
 	br->entries = malloc(sizeof(entry_t));
-	if (!br->entries) return -1;
+	if (!br->entries)
+		return -1;
 
 	strcpy(br->entries[0].name, "..");
 	br->entries[0].is_dir = 1;
 	br->entries[0].size = 0;
 	br->count = 1;
 
-	if (send_exact(sock, &req, sizeof(req)) <= 0) return -1;
+	if (send_exact(sock, &req, sizeof(req)) <= 0)
+		return -1;
 
 	message_header_t resp;
-	if (recv_exact(sock, &resp, sizeof(resp)) <= 0) return -1;
-	if (!validate_magic(resp.magic)) return -1;
+	if (recv_exact(sock, &resp, sizeof(resp)) <= 0)
+		return -1;
+	if (!validate_magic(resp.magic))
+		return -1;
 
 	uint32_t total = ntohl(resp.payload_size);
-	if (total == 0) return 0;
+	if (total == 0)
+		return 0;
 
 	uint8_t *buf = malloc(total);
-	if (!buf) return -1;
+	if (!buf)
+		return -1;
 
-	if (recv_exact(sock, buf, total) <= 0) { free(buf); return -1; }
+	if (recv_exact(sock, buf, total) <= 0) {
+		free(buf);
+		return -1;
+	}
 
 	int extra = 0;
 	size_t pos = 0;
 	while (pos + 11 <= total) {
 		uint16_t nl = ((uint16_t)buf[pos + 9] << 8) | buf[pos + 10];
-		if (pos + 11 + nl > total) break;
+		if (pos + 11 + nl > total)
+			break;
 		pos += 11 + nl;
 		extra++;
 	}
 
 	entry_t *ne = realloc(br->entries, sizeof(entry_t) * (1 + extra));
-	if (!ne) { free(buf); return 0; }
+	if (!ne) {
+		free(buf);
+		return 0;
+	}
 	br->entries = ne;
 
 	int idx = 1;
@@ -124,9 +143,11 @@ static int send_ls_detail(int sock, browser_t *br) {
 	while (pos + 11 <= total && idx <= extra) {
 		uint8_t type = buf[pos];
 		uint64_t sz = 0;
-		for (int i = 1; i <= 8; i++) sz = (sz << 8) | buf[pos + i];
+		for (int i = 1; i <= 8; i++)
+			sz = (sz << 8) | buf[pos + i];
 		uint16_t nl = ((uint16_t)buf[pos + 9] << 8) | buf[pos + 10];
-		if (pos + 11 + nl > total) break;
+		if (pos + 11 + nl > total)
+			break;
 		if (nl > 0 && nl < MAX_NAME) {
 			memcpy(br->entries[idx].name, buf + pos + 11, nl);
 			br->entries[idx].name[nl] = '\0';
@@ -146,20 +167,29 @@ static int send_read_file(int sock, const char *filename, char **out, uint32_t *
 	uint32_t nlen = strlen(filename);
 	message_header_t req = {{MAGIC_1, MAGIC_2}, CMD_READ_FILE, htonl(nlen)};
 
-	if (send_exact(sock, &req, sizeof(req)) <= 0) return -1;
-	if (send_exact(sock, filename, nlen) <= 0) return -1;
+	if (send_exact(sock, &req, sizeof(req)) <= 0)
+		return -1;
+	if (send_exact(sock, filename, nlen) <= 0)
+		return -1;
 
 	message_header_t resp;
-	if (recv_exact(sock, &resp, sizeof(resp)) <= 0) return -1;
-	if (!validate_magic(resp.magic)) return -1;
+	if (recv_exact(sock, &resp, sizeof(resp)) <= 0)
+		return -1;
+	if (!validate_magic(resp.magic))
+		return -1;
 
 	uint32_t size = ntohl(resp.payload_size);
-	if (size == 0) return -1;
+	if (size == 0)
+		return -1;
 
 	char *content = malloc(size + 1);
-	if (!content) return -1;
+	if (!content)
+		return -1;
 
-	if (recv_exact(sock, content, size) <= 0) { free(content); return -1; }
+	if (recv_exact(sock, content, size) <= 0) {
+		free(content);
+		return -1;
+	}
 	content[size] = '\0';
 	*out = content;
 	*out_size = size;
@@ -170,89 +200,124 @@ static int send_file_info(int sock, const char *path, uint64_t *out_size, uint8_
 	uint32_t plen = strlen(path);
 	message_header_t req = {{MAGIC_1, MAGIC_2}, CMD_FILE_INFO, htonl(plen)};
 
-	if (send_exact(sock, &req, sizeof(req)) <= 0) return -1;
-	if (send_exact(sock, path, plen) <= 0) return -1;
+	if (send_exact(sock, &req, sizeof(req)) <= 0)
+		return -1;
+	if (send_exact(sock, path, plen) <= 0)
+		return -1;
 
 	message_header_t resp;
-	if (recv_exact(sock, &resp, sizeof(resp)) <= 0) return -1;
-	if (!validate_magic(resp.magic)) return -1;
+	if (recv_exact(sock, &resp, sizeof(resp)) <= 0)
+		return -1;
+	if (!validate_magic(resp.magic))
+		return -1;
 
-	if (ntohl(resp.payload_size) != 40) return -1;
+	if (ntohl(resp.payload_size) != 40)
+		return -1;
 
 	uint8_t payload[40];
-	if (recv_exact(sock, payload, 40) <= 0) return -1;
+	if (recv_exact(sock, payload, 40) <= 0)
+		return -1;
 
 	uint64_t sz = 0;
-	for (int i = 0; i < 8; i++) sz = (sz << 8) | payload[i];
+	for (int i = 0; i < 8; i++)
+		sz = (sz << 8) | payload[i];
 	*out_size = sz;
 	memcpy(sha256, payload + 8, 32);
 	return 0;
 }
 
 static int download_from_daemon(int sock, const char *path, uint64_t offset,
-                                 uint8_t **out_data, uint32_t *out_size) {
+								uint8_t **out_data, uint32_t *out_size) {
 	uint32_t plen = strlen(path);
 	uint32_t payload_len = 8 + plen;
 
 	message_header_t req = {{MAGIC_1, MAGIC_2}, CMD_DOWNLOAD, htonl(payload_len)};
-	if (send_exact(sock, &req, sizeof(req)) <= 0) return -1;
+	if (send_exact(sock, &req, sizeof(req)) <= 0)
+		return -1;
 
 	uint8_t off_buf[8];
 	uint64_t tmp = offset;
-	for (int i = 7; i >= 0; i--) { off_buf[i] = tmp & 0xFF; tmp >>= 8; }
-	if (send_exact(sock, off_buf, 8) <= 0) return -1;
-	if (send_exact(sock, path, plen) <= 0) return -1;
+	for (int i = 7; i >= 0; i--) {
+		off_buf[i] = tmp & 0xFF;
+		tmp >>= 8;
+	}
+	if (send_exact(sock, off_buf, 8) <= 0)
+		return -1;
+	if (send_exact(sock, path, plen) <= 0)
+		return -1;
 
 	message_header_t resp;
-	if (recv_exact(sock, &resp, sizeof(resp)) <= 0) return -1;
-	if (!validate_magic(resp.magic)) return -1;
+	if (recv_exact(sock, &resp, sizeof(resp)) <= 0)
+		return -1;
+	if (!validate_magic(resp.magic))
+		return -1;
 
 	uint32_t size = ntohl(resp.payload_size);
-	if (size == 0) return -1;
+	if (size == 0)
+		return -1;
 
 	uint8_t *data = malloc(size);
-	if (!data) return -1;
+	if (!data)
+		return -1;
 
-	if (recv_exact(sock, data, size) <= 0) { free(data); return -1; }
+	if (recv_exact(sock, data, size) <= 0) {
+		free(data);
+		return -1;
+	}
 	*out_data = data;
 	*out_size = size;
 	return 0;
 }
 
 static int upload_to_daemon(int sock, const char *dest_path, uint64_t offset,
-                             const uint8_t *data, uint32_t data_size) {
+							const uint8_t *data, uint32_t data_size) {
 	uint16_t plen = (uint16_t)strlen(dest_path);
 	uint32_t payload_len = 8 + 2 + plen + data_size;
 
 	message_header_t req = {{MAGIC_1, MAGIC_2}, CMD_UPLOAD, htonl(payload_len)};
-	if (send_exact(sock, &req, sizeof(req)) <= 0) return -1;
+	if (send_exact(sock, &req, sizeof(req)) <= 0)
+		return -1;
 
 	uint8_t off_buf[8];
 	uint64_t tmp = offset;
-	for (int i = 7; i >= 0; i--) { off_buf[i] = tmp & 0xFF; tmp >>= 8; }
-	if (send_exact(sock, off_buf, 8) <= 0) return -1;
+	for (int i = 7; i >= 0; i--) {
+		off_buf[i] = tmp & 0xFF;
+		tmp >>= 8;
+	}
+	if (send_exact(sock, off_buf, 8) <= 0)
+		return -1;
 
 	uint8_t nl_buf[2] = {(plen >> 8) & 0xFF, plen & 0xFF};
-	if (send_exact(sock, nl_buf, 2) <= 0) return -1;
-	if (send_exact(sock, dest_path, plen) <= 0) return -1;
-	if (data_size > 0 && send_exact(sock, data, data_size) <= 0) return -1;
+	if (send_exact(sock, nl_buf, 2) <= 0)
+		return -1;
+	if (send_exact(sock, dest_path, plen) <= 0)
+		return -1;
+	if (data_size > 0 && send_exact(sock, data, data_size) <= 0)
+		return -1;
 
 	message_header_t resp;
-	if (recv_exact(sock, &resp, sizeof(resp)) <= 0) return -1;
-	if (!validate_magic(resp.magic)) return -1;
-	if (ntohl(resp.payload_size) == 0) return -1;
+	if (recv_exact(sock, &resp, sizeof(resp)) <= 0)
+		return -1;
+	if (!validate_magic(resp.magic))
+		return -1;
+	if (ntohl(resp.payload_size) == 0)
+		return -1;
 
 	uint8_t status;
-	if (recv_exact(sock, &status, 1) <= 0) return -1;
+	if (recv_exact(sock, &status, 1) <= 0)
+		return -1;
 	return (status == 0x01) ? 0 : -1;
 }
 
 static int cmp_entry(const void *a, const void *b) {
 	const entry_t *ea = (const entry_t *)a;
 	const entry_t *eb = (const entry_t *)b;
-	if (strcmp(ea->name, "..") == 0) return -1;
-	if (strcmp(eb->name, "..") == 0) return 1;
-	if (ea->is_dir != eb->is_dir) return eb->is_dir - ea->is_dir;
+	if (strcmp(ea->name, "..") == 0)
+		return -1;
+	if (strcmp(eb->name, "..") == 0)
+		return 1;
+	if (ea->is_dir != eb->is_dir)
+		return eb->is_dir - ea->is_dir;
 	return strcasecmp(ea->name, eb->name);
 }
 
@@ -282,11 +347,13 @@ static void draw_browser(browser_t *br) {
 	attroff(COLOR_PAIR(3) | A_BOLD);
 
 	int visible = rows - 2;
-	if (visible < 1) visible = 1;
+	if (visible < 1)
+		visible = 1;
 
 	for (int i = 0; i < visible; i++) {
 		int idx = br->scroll + i;
-		if (idx >= br->count) break;
+		if (idx >= br->count)
+			break;
 		entry_t *e = &br->entries[idx];
 		int sel = (idx == br->selected);
 
@@ -302,7 +369,8 @@ static void draw_browser(browser_t *br) {
 			char sz[32];
 			format_size(e->size, sz, sizeof(sz));
 			int nw = cols - 16;
-			if (nw < 4) nw = 4;
+			if (nw < 4)
+				nw = 4;
 			snprintf(line, sizeof(line), " %-*s %12s", nw, e->name, sz);
 		}
 		mvprintw(i + 1, 0, "%-*.*s", cols, cols, line);
@@ -319,8 +387,8 @@ static void draw_browser(browser_t *br) {
 		snprintf(footer, sizeof(footer), " %s", br->status);
 	} else {
 		snprintf(footer, sizeof(footer),
-		         " Enter:open  Bksp:parent  c:copy  q:quit  [%d/%d]",
-		         br->selected + 1, br->count);
+				 " Enter:open  Bksp:parent  c:copy  q:quit  [%d/%d]",
+				 br->selected + 1, br->count);
 	}
 	mvprintw(rows - 1, 0, "%-*.*s", cols, cols, footer);
 	attroff(COLOR_PAIR(3));
@@ -331,10 +399,14 @@ static void draw_browser(browser_t *br) {
 static void view_content(const char *title, const char *content, uint32_t size) {
 	int lc = 0, lcap = 64;
 	char **lines = malloc(sizeof(char *) * lcap);
-	if (!lines) return;
+	if (!lines)
+		return;
 
 	char *buf = malloc(size + 1);
-	if (!buf) { free(lines); return; }
+	if (!buf) {
+		free(lines);
+		return;
+	}
 	memcpy(buf, content, size);
 	buf[size] = '\0';
 
@@ -346,7 +418,8 @@ static void view_content(const char *title, const char *content, uint32_t size) 
 				if (lc >= lcap) {
 					lcap *= 2;
 					char **nl = realloc(lines, sizeof(char *) * lcap);
-					if (!nl) break;
+					if (!nl)
+						break;
 					lines = nl;
 				}
 				lines[lc++] = buf + i + 1;
@@ -359,7 +432,8 @@ static void view_content(const char *title, const char *content, uint32_t size) 
 		int rows, cols;
 		getmaxyx(stdscr, rows, cols);
 		int visible = rows - 2;
-		if (visible < 1) visible = 1;
+		if (visible < 1)
+			visible = 1;
 		erase();
 
 		attron(COLOR_PAIR(3) | A_BOLD);
@@ -387,16 +461,33 @@ static void view_content(const char *title, const char *content, uint32_t size) 
 
 		int ch = getch();
 		switch (ch) {
-		case KEY_UP:    if (scroll > 0) scroll--; break;
-		case KEY_DOWN:  if (scroll + visible < lc) scroll++; break;
-		case KEY_PPAGE: scroll -= visible; if (scroll < 0) scroll = 0; break;
+		case KEY_UP:
+			if (scroll > 0)
+				scroll--;
+			break;
+		case KEY_DOWN:
+			if (scroll + visible < lc)
+				scroll++;
+			break;
+		case KEY_PPAGE:
+			scroll -= visible;
+			if (scroll < 0)
+				scroll = 0;
+			break;
 		case KEY_NPAGE:
 			scroll += visible;
-			if (scroll + visible > lc) scroll = lc - visible;
-			if (scroll < 0) scroll = 0;
+			if (scroll + visible > lc)
+				scroll = lc - visible;
+			if (scroll < 0)
+				scroll = 0;
 			break;
-		case KEY_RESIZE: break;
-		case 'q': case 'Q': case 27: running = 0; break;
+		case KEY_RESIZE:
+			break;
+		case 'q':
+		case 'Q':
+		case 27:
+			running = 0;
+			break;
 		}
 	}
 
@@ -411,7 +502,8 @@ static void navigate_up(int sock, browser_t *br) {
 		strncpy(came_from, slash + 1, MAX_NAME - 1);
 
 	char new_cwd[MAX_PATH];
-	if (send_cd_get_path(sock, "..", new_cwd, sizeof(new_cwd)) != 0) return;
+	if (send_cd_get_path(sock, "..", new_cwd, sizeof(new_cwd)) != 0)
+		return;
 
 	strncpy(br->cwd, new_cwd, MAX_PATH - 1);
 	send_ls_detail(sock, br);
@@ -423,7 +515,8 @@ static void navigate_up(int sock, browser_t *br) {
 		int rows, cols;
 		getmaxyx(stdscr, rows, cols);
 		int visible = rows - 2;
-		if (visible < 1) visible = 1;
+		if (visible < 1)
+			visible = 1;
 		for (int i = 0; i < br->count; i++) {
 			if (strcmp(br->entries[i].name, came_from) == 0) {
 				br->selected = i;
@@ -474,7 +567,7 @@ static void show_result(const char *file, const char *dest, const char *msg) {
 }
 
 static int copy_dialog(const char *filename, char *dest_host, int *dest_port, char *dest_path) {
-	int rows, cols;
+	int rows __attribute__((unused)), cols;
 	getmaxyx(stdscr, rows, cols);
 	erase();
 
@@ -496,7 +589,8 @@ static int copy_dialog(const char *filename, char *dest_host, int *dest_port, ch
 	noecho();
 	curs_set(0);
 
-	if (addr_buf[0] == '\0') return -1;
+	if (addr_buf[0] == '\0')
+		return -1;
 
 	char host[256] = DEFAULT_HOST;
 	int port = DEFAULT_PORT;
@@ -518,7 +612,8 @@ static int copy_dialog(const char *filename, char *dest_host, int *dest_port, ch
 	noecho();
 	curs_set(0);
 
-	if (path_buf[0] == '\0') return -1;
+	if (path_buf[0] == '\0')
+		return -1;
 
 	int plen = strlen(path_buf);
 	if (path_buf[plen - 1] == '/') {
@@ -532,7 +627,8 @@ static int copy_dialog(const char *filename, char *dest_host, int *dest_port, ch
 }
 
 static void handle_copy(int sock, browser_t *br) {
-	if (br->count == 0) return;
+	if (br->count == 0)
+		return;
 	entry_t *e = &br->entries[br->selected];
 
 	if (e->is_dir) {
@@ -544,7 +640,8 @@ static void handle_copy(int sock, browser_t *br) {
 	int dest_port;
 	char dest_path[MAX_PATH];
 
-	if (copy_dialog(e->name, dest_host, &dest_port, dest_path) < 0) return;
+	if (copy_dialog(e->name, dest_host, &dest_port, dest_path) < 0)
+		return;
 
 	char dest_display[512];
 	snprintf(dest_display, sizeof(dest_display), "%s:%d:%s", dest_host, dest_port, dest_path);
@@ -678,13 +775,15 @@ static void run_browser(int sock) {
 		int rows, cols;
 		getmaxyx(stdscr, rows, cols);
 		int visible = rows - 2;
-		if (visible < 1) visible = 1;
+		if (visible < 1)
+			visible = 1;
 
 		switch (ch) {
 		case KEY_UP:
 			if (br.selected > 0) {
 				br.selected--;
-				if (br.selected < br.scroll) br.scroll = br.selected;
+				if (br.selected < br.scroll)
+					br.scroll = br.selected;
 			}
 			break;
 
@@ -696,8 +795,11 @@ static void run_browser(int sock) {
 			}
 			break;
 
-		case '\n': case '\r': case KEY_ENTER: {
-			if (br.count == 0) break;
+		case '\n':
+		case '\r':
+		case KEY_ENTER: {
+			if (br.count == 0)
+				break;
 			entry_t *e = &br.entries[br.selected];
 			if (e->is_dir) {
 				if (strcmp(e->name, "..") == 0) {
@@ -735,18 +837,25 @@ static void run_browser(int sock) {
 			break;
 		}
 
-		case KEY_BACKSPACE: case KEY_LEFT: case 127: case 8:
+		case KEY_BACKSPACE:
+		case KEY_LEFT:
+		case 127:
+		case 8:
 			navigate_up(sock, &br);
 			break;
 
-		case 'c': case 'C': case KEY_F(5):
+		case 'c':
+		case 'C':
+		case KEY_F(5):
 			handle_copy(sock, &br);
 			break;
 
 		case KEY_RESIZE:
 			break;
 
-		case 'q': case 'Q': case 27:
+		case 'q':
+		case 'Q':
+		case 27:
 			running = 0;
 			break;
 		}
@@ -756,7 +865,7 @@ static void run_browser(int sock) {
 	free(br.entries);
 }
 
-int main() {
+int main(void) {
 	char daemon_host[256] = DEFAULT_HOST;
 	int daemon_port = DEFAULT_PORT;
 	char buffer[256];

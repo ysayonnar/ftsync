@@ -550,7 +550,7 @@ int handle(int server_sock) {
 	return 0;
 }
 
-int main() {
+int main(void) {
 	int server_sock = socket(AF_INET, SOCK_STREAM, 0);
 
 	int opt = 1;
